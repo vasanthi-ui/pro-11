@@ -1,0 +1,70 @@
+import pandas as pd
+
+# Load the dataset
+df = pd.read_csv('/content/sample_data/appointments.csv')
+
+# Display the first few rows
+print(df.head())
+
+# Display information about the dataset
+print(df.info())
+# Combine `appointment_date` and `appointment_time` into a single datetime column
+df['appointment_datetime'] = pd.to_datetime(df['appointment_date'] + ' ' + df['appointment_time'])
+
+# Extract the weekday as a numerical value (Monday=0, Sunday=6)
+df['weekday'] = df['appointment_datetime'].dt.weekday
+
+# Convert the `status` column to a binary target variable: 1 for 'No-show', 0 otherwise
+df['no_show'] = (df['status'] == 'No-show').astype(int)
+
+# Drop original `appointment_date`, `appointment_time`, `appointment_datetime` and `status` columns
+df = df.drop(columns=['appointment_date', 'appointment_time', 'appointment_datetime', 'status'])
+
+# Display the first few rows of the transformed DataFrame
+print(df.head())
+
+# Display information about the transformed DataFrame
+print(df.info())
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import accuracy_score, classification_report
+
+# One-hot encode `reason_for_visit`
+df_encoded = pd.get_dummies(df, columns=['reason_for_visit'], drop_first=True)
+
+# Define features (X) and target (y)
+X = df_encoded.drop(columns=['appointment_id', 'patient_id', 'doctor_id', 'no_show'])
+y = df_encoded['no_show']
+
+# Split data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+# Initialize and train the Decision Tree model
+dt_model = DecisionTreeClassifier(random_state=42)
+dt_model.fit(X_train, y_train)
+
+# Make predictions on the test set
+y_pred = dt_model.predict(X_test)
+
+# Evaluate the model
+accuracy = accuracy_score(y_test, y_pred)
+classification_rep = classification_report(y_test, y_pred)
+
+print(f"Accuracy: {accuracy}")
+print("Classification Report:\n", classification_rep)
+
+# Analyze trends
+# No-show rate by weekday
+no_show_by_weekday = df.groupby('weekday')['no_show'].mean().reset_index()
+no_show_by_weekday['weekday_name'] = no_show_by_weekday['weekday'].map({
+    0: 'Monday', 1: 'Tuesday', 2: 'Wednesday', 3: 'Thursday', 4: 'Friday', 5: 'Saturday', 6: 'Sunday'
+})
+
+# No-show rate by reason_for_visit
+no_show_by_reason = df.groupby('reason_for_visit')['no_show'].mean().reset_index()
+
+print("\nNo-show rate by Weekday:\n", no_show_by_weekday)
+print("\nNo-show rate by Reason for Visit:\n", no_show_by_reason)
+
+
+This is about the prediction analysis of healthcare field.
